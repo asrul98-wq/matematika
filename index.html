@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Petualangan Kebun Buah 🍎⭐</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tone.js untuk efek suara ceria tanpa file eksternal -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <!-- Google Fonts: Fredoka (font bulat yang ramah anak) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background: linear-gradient(180deg, #7dd3fc 0%, #bae6fd 55%, #86efac 55%, #4ade80 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Animasi mengambang untuk awan dan hiasan */
+        @keyframes floatSlow {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        .animate-float {
+            animation: floatSlow 3.5s ease-in-out infinite;
+        }
+
+        /* Animasi muncul membal */
+        @keyframes bounceIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            70% { transform: scale(1.08); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-bounce-in {
+            animation: bounceIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        /* Animasi bintang didapat */
+        @keyframes starPop {
+            0% { transform: scale(1); }
+            40% { transform: scale(1.6) rotate(15deg); }
+            70% { transform: scale(0.9) rotate(-10deg); }
+            100% { transform: scale(1) rotate(0deg); }
+        }
+        .animate-star-pop {
+            animation: starPop 0.6s ease-out forwards;
+        }
+
+        /* Animasi goyang lembut saat jawaban salah */
+        @keyframes gentleShake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-8px); }
+            40% { transform: translateX(8px); }
+            60% { transform: translateX(-6px); }
+            80% { transform: translateX(6px); }
+        }
+        .animate-shake {
+            animation: gentleShake 0.45s ease-in-out;
+        }
+
+        /* Tombol gaya 3D ramah anak */
+        .btn-3d {
+            transition: all 0.12s ease;
+            border-bottom-width: 6px;
+        }
+        .btn-3d:active:not(:disabled) {
+            transform: translateY(4px);
+            border-bottom-width: 2px;
+        }
+        .btn-3d:disabled {
+            cursor: not-allowed;
+        }
+
+        /* Item buah yang bisa diketuk untuk berhitung */
+        .fruit-item {
+            transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+            cursor: pointer;
+        }
+        .fruit-item:hover {
+            transform: scale(1.15);
+        }
+        .fruit-item:active {
+            transform: scale(0.9);
+        }
+    </style>
+</head>
+<body class="relative flex flex-col items-center justify-between p-3 sm:p-6">
+
+    <!-- Canvas Confetti untuk perayaan -->
+    <canvas id="confetti-canvas" class="fixed inset-0 pointer-events-none z-50"></canvas>
+
+    <!-- Dekorasi Latar Belakang (Awan & Pohon) -->
+    <div class="fixed top-4 left-4 text-5xl sm:text-6xl opacity-80 pointer-events-none animate-float">☁️</div>
+    <div class="fixed top-10 right-6 text-4xl sm:text-5xl opacity-80 pointer-events-none animate-float" style="animation-delay: 1.2s;">☁️</div>
+    <div class="fixed bottom-2 left-2 text-5xl sm:text-7xl pointer-events-none select-none">🌳</div>
+    <div class="fixed bottom-2 right-2 text-5xl sm:text-7xl pointer-events-none select-none">🌻</div>
+
+    <!-- Wadah Utama Aplikasi -->
+    <main class="w-full max-w-2xl mx-auto z-10 flex-1 flex flex-col justify-center">
+
+        <!-- ========================================== -->
+        <!-- 1. LAYAR PEMBUKA (START SCREEN)            -->
+        <!-- ========================================== -->
+        <section id="start-screen" class="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl border-4 border-amber-400 p-6 sm:p-10 text-center animate-bounce-in">
+            <!-- Baris Pengaturan Spreadsheet untuk Guru -->
+            <div class="flex justify-end mb-2">
+                <button onclick="openSheetModal()" class="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 px-3 py-1.5 rounded-xl transition">
+                    <span id="sheet-badge-dot" class="w-2.5 h-2.5 rounded-full bg-gray-400 inline-block"></span>
+                    <span>📊 Spreadsheet Guru</span>
+                </button>
+            </div>
+
+            <div class="flex justify-center gap-2 text-4xl sm:text-5xl mb-3">
+            <!-- Status Pengiriman ke Google Spreadsheet -->
+            <div id="sheet-status-banner" class="mb-3 text-sm sm:text-base font-semibold bg-sky-50 text-sky-800 border border-sky-200 rounded-xl px-3.5 py-2.5 flex flex-wrap items-center justify-center gap-2">
+                <span>📊 Nilai siap diunduh ke Spreadsheet (.CSV)</span>
+            </div>
+
+            <!-- Notifikasi Salin Nilai -->
+            <p id="copy-feedback" class="hidden mb-3 text-sm sm:text-base font-semibold text-emerald-700 bg-emerald-100 border border-emerald-300 rounded-xl px-3 py-2">
+                ✅ Hasil nilai berhasil disalin! Siap dikirim ke Ibu/Bapak Guru.
+            </p>
+
+            <!-- Tombol Aksi Akhir -->
+            <div class="flex flex-wrap items-center justify-center gap-2.5 sm:gap-3">
+                <button onclick="downloadCSV()" class="btn-3d w-full sm:w-auto px-5 py-3.5 bg-teal-600 hover:bg-teal-500 border-teal-800 text-white text-base sm:text-lg font-bold rounded-2xl shadow-lg">
+                    Unduh Excel/CSV 📊
+                </button>
+                <button onclick="copyScoreResult()" class="btn-3d w-full sm:w-auto px-5 py-3.5 bg-sky-500 hover:bg-sky-400 border-sky-700 text-white text-base sm:text-lg font-bold rounded-2xl shadow-lg">
+                    Salin Nilai 📋
+                </button>
+                <button onclick="playAgain()" class="btn-3d w-full sm:w-auto px-5 py-3.5 bg-emerald-500 hover:bg-emerald-400 border-emerald-700 text-white text-base sm:text-lg font-bold rounded-2xl shadow-lg">
+                    Main Lagi 🔄
+                </button>
+                <button onclick="changeStudent()" class="btn-3d w-full sm:w-auto px-5 py-3.5 bg-amber-400 hover:bg-amber-300 border-amber-600 text-amber-950 text-base sm:text-lg font-bold rounded-2xl shadow-lg">
+                    Ganti Siswa ✏️
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ========================================== -->
+    <!-- MODAL PENGATURAN GOOGLE SPREADSHEET (GURU) -->
+    <!-- ========================================== -->
+    <div id="sheet-modal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5">
+        <div class="bg-white rounded-3xl border-4 border-emerald-400 shadow-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto p-5 sm:p-6 text-left animate-bounce-in">
+            <div class="flex items-center justify-between border-b-2 border-gray-100 pb-3 mb-4">
+                <h3 class="text-xl sm:text-2xl font-bold text-emerald-700 flex items-center gap-2">
+                    <span>📊</span> Hubungkan Google Spreadsheet
+                </h3>
+                <button onclick="closeSheetModal()" class="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-lg">
+                    ✕
+                </button>
+            </div>
+
+            <!-- Input URL Web App Google Apps Script -->
+            <div class="mb-4">
+                <label for="sheet-webhook-url" class="block text-sm font-bold text-gray-700 mb-1">
+                    URL Web App Google Apps Script:
+                </label>
+                <input id="sheet-webhook-url" type="url" placeholder="https://script.google.com/macros/s/...../exec" class="w-full px-3.5 py-2.5 rounded-xl border-2 border-emerald-300 focus:border-emerald-500 focus:outline-none text-sm text-gray-800">
+                <p id="sheet-modal-msg" class="hidden mt-2 text-xs sm:text-sm font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2"></p>
+            </div>
+
+            <div class="flex flex-wrap gap-2 mb-5">
+                <button onclick="saveSheetConfig()" class="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl text-sm shadow">
+                    Simpan URL ✅
+                </button>
+                <button onclick="copyStudentShareLink()" class="px-4 py-2.5 bg-sky-500 hover:bg-sky-600 text-white font-bold rounded-xl text-sm shadow">
+                    Salin Link Siswa 🔗
+                </button>
+                <button onclick="downloadCSV()" class="px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl text-sm shadow">
+                    Unduh Rekap Sesi (.CSV) 📥 (<span id="session-count-badge">0</span>)
+                </button>
+            </div>
+
+            <!-- Panduan Singkat & Kode Apps Script -->
+            <div class="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 text-xs sm:text-sm text-amber-950 space-y-2">
+                <p class="font-bold text-amber-900">📝 Cara Menghubungkan ke Google Sheets (Sekali Saja):</p>
+                <ol class="list-decimal list-inside space-y-1 text-amber-900">
+                    <li>Buka <strong>Google Sheets</strong> baru, lalu klik menu <strong>Ekstensi &gt; Apps Script</strong>.</li>
+                    <li>Hapus semua kode yang ada, lalu tempel kode di bawah ini dan klik <strong>Simpan (💾)</strong>.</li>
+                    <li>Klik <strong>Terapkan &gt; Deployment baru &gt; Jenis: Aplikasi Web</strong>.</li>
+                    <li>Pada bagian <em>Yang memiliki akses</em>, pilih <strong>Siapa saja (Anyone)</strong>, lalu klik <strong>Terapkan</strong>.</li>
+                    <li>Salin <strong>URL Aplikasi Web</strong> yang muncul, lalu tempel di kotak atas!</li>
+                </ol>
+
+                <div class="pt-2">
+                    <button onclick="copyAppsScriptCode()" class="w-full py-2 px-3 bg-amber-400 hover:bg-amber-300 text-amber-950 font-bold rounded-xl border border-amber-500 transition">
+                        Salin Kode Google Apps Script 📜
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+            <h1 class="text-3xl sm:text-5xl font-bold text-emerald-600 tracking-wide mb-3 drop-shadow-sm">
+                Petualangan Kebun Buah
+            </h1>
+
+            <div class="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 sm:p-5 my-5 flex flex-col sm:flex-row items-center gap-4 text-left">
+                <div class="text-5xl sm:text-6xl bg-amber-200 rounded-full p-3 shadow-inner shrink-0">
+                    🐿️
+                </div>
+                <div>
+                    <p class="text-lg sm:text-xl font-semibold text-amber-900">
+                        Halo, Petualang Cilik! 👋🌳
+                    </p>
+                    <p class="text-base sm:text-lg text-amber-800 mt-1 leading-relaxed">
+                        Yuk bantu Kiki si Tupai menghitung buah-buahan di kebun! Jawab <strong>5 soal</strong> dan kumpulkan <strong>5 Bintang (⭐)</strong>!
+                    </p>
+                </div>
+            </div>
+
+            <!-- Formulir Biodata Siswa -->
+            <div class="bg-sky-50 border-2 border-sky-200 rounded-2xl p-4 sm:p-5 mb-5 text-left">
+                <h2 class="text-lg sm:text-xl font-bold text-sky-900 mb-3 flex items-center gap-2">
+                    <span>🎒</span> Isi Biodata Petualang Dulu Ya:
+                </h2>
+                <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                    <div class="sm:col-span-6">
+                        <label for="student-name" class="block text-sm font-bold text-sky-800 mb-1">
+                            Nama Siswa <span class="text-red-500">*</span>
+                        </label>
+                        <input id="student-name" type="text" maxlength="35" placeholder="Tulis namamu..." class="w-full px-3.5 py-2.5 rounded-xl border-2 border-sky-300 focus:border-emerald-500 focus:outline-none text-base sm:text-lg font-medium text-gray-800 bg-white">
+                    </div>
+                    <div class="sm:col-span-3">
+                        <label for="student-class" class="block text-sm font-bold text-sky-800 mb-1">
+                            Kelas
+                        </label>
+                        <input id="student-class" type="text" maxlength="10" placeholder="Contoh: 1A" class="w-full px-3.5 py-2.5 rounded-xl border-2 border-sky-300 focus:border-emerald-500 focus:outline-none text-base sm:text-lg font-medium text-gray-800 bg-white">
+                    </div>
+                    <div class="sm:col-span-3">
+                        <label for="student-absen" class="block text-sm font-bold text-sky-800 mb-1">
+                            No. Absen
+                        </label>
+                        <input id="student-absen" type="text" inputmode="numeric" maxlength="5" placeholder="Contoh: 05" class="w-full px-3.5 py-2.5 rounded-xl border-2 border-sky-300 focus:border-emerald-500 focus:outline-none text-base sm:text-lg font-medium text-gray-800 bg-white">
+                    </div>
+                </div>
+                <!-- Pesan Peringatan Jika Nama Kosong -->
+                <p id="biodata-error" class="hidden mt-3 text-sm sm:text-base font-semibold text-red-600 bg-red-100 border border-red-300 rounded-xl px-3 py-2">
+                    🐿️ Ups! Tulis <strong>Nama Siswa</strong> dulu ya sebelum mulai bermain!
+                </p>
+            </div>
+
+            <button onclick="startGame()" class="btn-3d w-full sm:w-auto px-10 py-4 bg-emerald-500 hover:bg-emerald-400 border-emerald-700 text-white text-2xl sm:text-3xl font-bold rounded-2xl shadow-lg">
+                Mulai Bermain! 🚀
+            </button>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- 2. LAYAR PERMAINAN (GAME SCREEN)           -->
+        <!-- ========================================== -->
+        <section id="game-screen" class="hidden flex-col gap-3 sm:gap-4">
+            
+            <!-- Info Siswa & Nilai Sementara -->
+            <div class="bg-white/90 rounded-2xl shadow-sm border-2 border-emerald-300 px-4 py-2 flex flex-wrap items-center justify-between gap-2 text-sm sm:text-base">
+                <div class="font-bold text-emerald-900 flex items-center gap-1.5">
+                    <span>🎒</span>
+                    <span id="header-student-info">Petualang Cilik</span>
+                </div>
+                <div class="bg-amber-100 text-amber-900 font-bold px-3 py-0.5 rounded-xl border border-amber-300">
+                    Nilai: <span id="live-score">0</span>
+                </div>
+            </div>
+
+            <!-- Bilah Atas: Nomor Soal, Rak Bintang, Tombol Suara -->
+            <header class="bg-white/95 rounded-2xl shadow-lg border-4 border-amber-300 px-4 py-3 flex items-center justify-between gap-2">
+                <div class="bg-sky-100 text-sky-800 font-bold px-3 py-1.5 rounded-xl text-base sm:text-lg border-2 border-sky-200">
+                    Soal <span id="question-number">1</span> / 5
+                </div>
+
+                <!-- Rak 5 Bintang -->
+                <div id="star-rack" class="flex items-center gap-1 sm:gap-2 text-2xl sm:text-3xl" aria-label="Koleksi Bintang">
+                    <span class="star-slot opacity-35 grayscale transition-all">⭐</span>
+                    <span class="star-slot opacity-35 grayscale transition-all">⭐</span>
+                    <span class="star-slot opacity-35 grayscale transition-all">⭐</span>
+                    <span class="star-slot opacity-35 grayscale transition-all">⭐</span>
+                    <span class="star-slot opacity-35 grayscale transition-all">⭐</span>
+                </div>
+
+                <!-- Tombol Suara -->
+                <button id="sound-toggle" onclick="toggleSound()" class="p-2 bg-amber-100 hover:bg-amber-200 rounded-xl border-2 border-amber-300 text-xl sm:text-2xl transition" title="Suara">
+                    🔊
+                </button>
+            </header>
+
+            <!-- Kotak Pemandu Ceria (Kiki si Tupai) -->
+            <div id="guide-box" class="bg-amber-50/95 rounded-2xl shadow-md border-4 border-amber-300 p-3 sm:p-4 flex items-center gap-3 sm:gap-4 transition-all">
+                <div id="guide-avatar" class="text-4xl sm:text-5xl bg-amber-200 rounded-2xl p-2 shrink-0 shadow-sm">
+                    🐿️
+                </div>
+                <p id="guide-message" class="text-base sm:text-lg font-medium text-amber-950 leading-snug">
+                    Ayo baca ceritanya dan hitung buahnya bersama-sama! 😊
+                </p>
+            </div>
+
+            <!-- Kartu Soal Cerita & Alat Bantu Hitung Visual -->
+            <div class="bg-white/95 rounded-3xl shadow-xl border-4 border-emerald-400 p-5 sm:p-6">
+                <!-- Teks Soal Cerita -->
+                <p id="story-text" class="text-xl sm:text-2xl font-semibold text-gray-800 text-center leading-relaxed mb-5">
+                    <!-- Diisi lewat JavaScript -->
+                </p>
+
+                <!-- Area Kebun Buah Interaktif (Bisa diketuk untuk menghitung) -->
+                <div class="bg-emerald-50 border-2 border-dashed border-emerald-300 rounded-2xl p-3 sm:p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs sm:text-sm font-semibold text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-lg">
+                            👆 Ketuk buah untuk menghitung!
+                        </span>
+                        <button onclick="resetFruitCount()" class="text-xs sm:text-sm font-semibold text-amber-700 hover:text-amber-900 bg-amber-100 px-2.5 py-1 rounded-lg border border-amber-200">
+                            Ulangi Hitungan 🔄
+                        </button>
+                    </div>
+
+                    <!-- Wadah Emoji Buah -->
+                    <div id="visual-fruit-container" class="min-h-[96px] flex flex-wrap items-center justify-center gap-2 sm:gap-3 py-2">
+                        <!-- Buah-buahan dirender di sini -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pilihan Jawaban (4 Tombol Besar) -->
+            <div id="options-grid" class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+                <!-- Tombol pilihan dirender lewat JavaScript -->
+            </div>
+
+            <!-- Tombol Lanjut ke Soal Berikutnya (Muncul setelah benar) -->
+            <div id="next-btn-container" class="hidden text-center mt-1 animate-bounce-in">
+                <button id="next-btn" onclick="nextQuestion()" class="btn-3d w-full sm:w-auto px-8 py-3.5 bg-amber-400 hover:bg-amber-300 border-amber-600 text-amber-950 text-xl sm:text-2xl font-bold rounded-2xl shadow-lg">
+                    Soal Berikutnya ➡️
+                </button>
+            </div>
+
+        </section>
+
+        <!-- ========================================== -->
+        <!-- 3. LAYAR SELESAI / KEMENANGAN (END SCREEN) -->
+        <!-- ========================================== -->
+        <section id="end-screen" class="hidden bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl border-4 border-amber-400 p-6 sm:p-8 text-center animate-bounce-in">
+            <div class="text-5xl sm:text-6xl mb-1 animate-bounce">🏆</div>
+            <h2 class="text-2xl sm:text-4xl font-bold text-emerald-600 mb-1">
+                Hore! Petualangan Selesai! 🎉
+            </h2>
+            <p class="text-base sm:text-lg text-gray-600 mb-4">
+                Ini kartu hasil belajarmu di Kebun Buah:
+            </p>
+
+            <!-- Kartu Biodata & Nilai Akhir -->
+            <div class="bg-gradient-to-b from-amber-50 to-emerald-50 border-4 border-amber-300 rounded-2xl p-4 sm:p-6 mb-5 shadow-inner">
+                <!-- Biodata Siswa -->
+                <div class="bg-white/90 rounded-xl border-2 border-amber-200 p-3 sm:p-4 mb-4 text-left grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm sm:text-base">
+                    <div>
+                        <span class="text-gray-500 block text-xs font-semibold uppercase">Nama Siswa</span>
+                        <span id="result-name" class="font-bold text-gray-800 text-base sm:text-lg">-</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-500 block text-xs font-semibold uppercase">Kelas</span>
+                        <span id="result-class" class="font-bold text-gray-800 text-base sm:text-lg">-</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-500 block text-xs font-semibold uppercase">No. Absen</span>
+                        <span id="result-absen" class="font-bold text-gray-800 text-base sm:text-lg">-</span>
+                    </div>
+                </div>
+
+                <!-- Kotak Nilai Utama -->
+                <div class="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 my-2">
+                    <div class="bg-emerald-500 text-white rounded-2xl px-6 py-3 shadow-md border-b-4 border-emerald-700">
+                        <span class="block text-xs sm:text-sm font-semibold uppercase tracking-wider opacity-90">Nilai Akhir</span>
+                        <span id="result-score" class="text-4xl sm:text-5xl font-bold">100</span>
+                    </div>
+
+                    <div class="text-center sm:text-left">
+                        <p id="result-predicate" class="text-xl sm:text-2xl font-bold text-amber-700">
+                            🌟 Istimewa!
+                        </p>
+                        <p id="result-detail" class="text-sm sm:text-base font-medium text-gray-700 mt-1">
+                            Langsung benar: 5 dari 5 soal
+                        </p>
+                        <div class="flex justify-center sm:justify-start gap-1 text-2xl sm:text-3xl mt-1.5">
+                            <span class="animate-star-pop" style="animation-delay: 0.1s;">⭐</span>
+                            <span class="animate-star-pop" style="animation-delay: 0.25s;">⭐</span>
+                            <span class="animate-star-pop" style="animation-delay: 0.4s;">⭐</span>
+                            <span class="animate-star-pop" style="animation-delay: 0.55s;">⭐</span>
+                            <span class="animate-star-pop" style="animation-delay: 0.7s;">⭐</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notifikasi Salin Nilai -->
+            <p id="copy-feedback" class="hidden mb-3 text-sm sm:text-base font-semibold text-emerald-700 bg-emerald-100 border border-emerald-300 rounded-xl px-3 py-2">
+                ✅ Hasil nilai berhasil disalin! Siap dikirim ke Ibu/Bapak Guru.
+            </p>
+
+            <!-- Tombol Aksi Akhir -->
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
+                <button onclick="copyScoreResult()" class="btn-3d w-full sm:w-auto px-6 py-3.5 bg-sky-500 hover:bg-sky-400 border-sky-700 text-white text-lg sm:text-xl font-bold rounded-2xl shadow-lg">
+                    Salin Nilai 📋
+                </button>
+                <button onclick="playAgain()" class="btn-3d w-full sm:w-auto px-6 py-3.5 bg-emerald-500 hover:bg-emerald-400 border-emerald-700 text-white text-lg sm:text-xl font-bold rounded-2xl shadow-lg">
+                    Main Lagi 🔄
+                </button>
+                <button onclick="changeStudent()" class="btn-3d w-full sm:w-auto px-6 py-3.5 bg-amber-400 hover:bg-amber-300 border-amber-600 text-amber-950 text-lg sm:text-xl font-bold rounded-2xl shadow-lg">
+                    Ganti Siswa ✏️
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer Kecil -->
+    <footer class="text-center text-emerald-950/70 text-xs sm:text-sm font-medium mt-3 z-10">
+        Belajar Berhitung Sambil Bermain • Kelas 1 SD 🎒
+    </footer>
+
+    <!-- ========================================== -->
+    <!-- LOGIKA GAME & SUARA (JAVASCRIPT)           -->
+    <!-- ========================================== -->
+    <script>
+        // --- 1. PENGATURAN EFEK SUARA (TONE.JS) ---
+        let isMuted = false;
+        let synth = null;
+
+        // Memastikan AudioContext aktif saat pengguna menekan tombol pertama kali
+        async function initAudio() {
+            try {
+                if (typeof Tone !== 'undefined') {
+                    if (Tone.context.state !== 'running') {
+                        await Tone.start();
+                    }
+                    if (!synth) {
+                        synth = new Tone.PolySynth(Tone.Synth, {
+                            oscillator: { type: "triangle" },
+                            envelope: { attack: 0.02, decay: 0.15, sustain: 0.1, release: 0.4 }
+                        }).toDestination();
+                        synth.volume.value = -6;
+                    }
+                }
+            } catch (e) {
+                console.warn("Audio tidak tersedia:", e);
+            }
+        }
+
+        function toggleSound() {
+            isMuted = !isMuted;
+            const btn = document.getElementById('sound-toggle');
+            btn.textContent = isMuted ? '🔇' : '🔊';
+            if (!isMuted) {
+                initAudio();
+                playPopSound(1);
+            }
+        }
+
+        // Nada naik bertahap saat anak mengetuk buah untuk berhitung
+        function playPopSound(step) {
+            if (isMuted) return;
+            initAudio();
+            if (!synth) return;
+            const scale = ["C5", "D5", "E5", "F5", "G5", "A5", "B5", "C6", "D6", "E6", "F6", "G6", "A6", "B6", "C7"];
+            const note = scale[(step - 1) % scale.length];
+            try {
+                synth.triggerAttackRelease(note, "16n");
+            } catch (e) {}
+        }
+
+        // Suara ceria saat jawaban benar
+        function playCorrectSound() {
+            if (isMuted) return;
+            initAudio();
+            if (!synth) return;
+            try {
+                const now = Tone.now();
+                synth.triggerAttackRelease("C5", "16n", now);
+                synth.triggerAttackRelease("E5", "16n", now + 0.1);
+                synth.triggerAttackRelease("G5", "16n", now + 0.2);
+                synth.triggerAttackRelease("C6", "8n", now + 0.3);
+            } catch (e) {}
+        }
+
+        // Suara lembut (tidak menakutkan) saat jawaban salah
+        function playWrongSound() {
+            if (isMuted) return;
+            initAudio();
+            if (!synth) return;
+            try {
+                const now = Tone.now();
+                synth.triggerAttackRelease("E4", "8n", now);
+                synth.triggerAttackRelease("C4", "8n", now + 0.15);
+            } catch (e) {}
+        }
+
+        // Fanfare kemenangan akhir
+        function playVictorySound() {
+            if (isMuted) return;
+            initAudio();
+            if (!synth) return;
+            try {
+                const now = Tone.now();
+                const melody = [
+                    { note: "C5", time: 0, dur: "16n" },
+                    { note: "E5", time: 0.12, dur: "16n" },
+                    { note: "G5", time: 0.24, dur: "16n" },
+                    { note: "C6", time: 0.36, dur: "8n" },
+                    { note: "G5", time: 0.55, dur: "16n" },
+                    { note: "C6", time: 0.7, dur: "4n" }
+                ];
+                melody.forEach(m => synth.triggerAttackRelease(m.note, m.dur, now + m.time));
+            } catch (e) {}
+        }
+
+        // --- 2. DATA BUAH & PEMBUAT SOAL CERITA ---
+        const FRUITS = [
+            { name: "apel merah", emoji: "🍎" },
+            { name: "pisang", emoji: "🍌" },
+            { name: "jeruk manis", emoji: "🍊" },
+            { name: "stroberi", emoji: "🍓" },
+            { name: "anggur", emoji: "🍇" },
+            { name: "semangka", emoji: "🍉" },
+            { name: "mangga", emoji: "🥭" },
+            { name: "nanas", emoji: "🍍" }
+        ];
+
+        const PRAISE_MESSAGES = [
+            "Hebat sekali! Kamu pintar berhitung! 🎉 Ini 1 Bintang (⭐) untukmu!",
+            "Luar biasa! Jawabanmu tepat sekali! 🌟 Kamu dapat 1 Bintang (⭐)!",
+            "Pintar banget! Kiki bangga padamu! 🥳 Tambah 1 Bintang (⭐) lagi!",
+            "Yeay, benar! Kamu jago matematika! 👏 Ini hadiah 1 Bintang (⭐)!",
+            "Mantap! Hitunganmu jitu sekali! ✨ Terimalah 1 Bintang (⭐) ini!"
+        ];
+
+        let questions = [];
+        let currentIndex = 0;
+        let starsEarned = 0;
+        let isQuestionAnswered = false;
+        let tapCount = 0;
+
+        // Data Biodata & Penilaian Siswa
+        let studentData = {
+            name: '',
+            studentClass: '',
+            absen: ''
+        };
+        let totalScore = 0;
+        let attemptsOnCurrent = 0;
+        let firstTryCorrect = 0;
+
+        // ============================================================
+        // PENGATURAN GURU (Siap Deploy ke GitHub Pages):
+        // Tempel URL Web App Google Apps Script di dalam tanda kutip di bawah ini
+        // agar semua siswa yang membuka link GitHub otomatis terhubung ke Spreadsheet.
+        // ============================================================
+        const DEFAULT_SHEET_URL = "https://script.google.com/a/macros/guru.smk.belajar.id/s/AKfycbx8_gDI8v4qWsbDR1_G-2lARXfazJfHYhYhjWxwnle_yxyxOmeUHHOiKYTouCYT4wjl/exec";
+
+        // Penyimpanan Spreadsheet (Google Apps Script URL & Rekap Sesi)
+        const urlParams = new URLSearchParams(window.location.search);
+        let sheetWebhookUrl = urlParams.get('sheet') || DEFAULT_SHEET_URL;
+        let sessionRecords = [];
+        let lastCompletedRecord = null;
+
+        // Perbarui indikator status koneksi Spreadsheet saat halaman dimuat
+        window.addEventListener('DOMContentLoaded', () => {
+            updateSheetBadge();
+        });
+
+        function updateSheetBadge() {
+            const dot = document.getElementById('sheet-badge-dot');
+            if (!dot) return;
+            if (sheetWebhookUrl) {
+                dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block';
+            } else {
+                dot.className = 'w-2.5 h-2.5 rounded-full bg-gray-400 inline-block';
+            }
+        }
+
+        // Menghasilkan 5 soal cerita acak (angka 1 sampai 15)
+// ... existing code ... -->
+        // --- 3. KONTROL ALUR PERMAINAN ---
+        function startGame() {
+            const nameInput = document.getElementById('student-name');
+            const classInput = document.getElementById('student-class');
+            const absenInput = document.getElementById('student-absen');
+            const errorBox = document.getElementById('biodata-error');
+
+            const cleanName = nameInput.value.trim();
+            if (!cleanName) {
+                errorBox.classList.remove('hidden');
+                errorBox.classList.remove('animate-shake');
+                void errorBox.offsetWidth; // trigger reflow animasi
+                errorBox.classList.add('animate-shake');
+                nameInput.focus();
+                playWrongSound();
+                return;
+            }
+
+            errorBox.classList.add('hidden');
+            studentData = {
+                name: cleanName,
+                studentClass: classInput.value.trim() || '-',
+                absen: absenInput.value.trim() || '-'
+            };
+
+            // Tampilkan nama siswa di bilah atas permainan
+            const classBadge = studentData.studentClass !== '-' ? ` (Kelas ${studentData.studentClass})` : '';
+            document.getElementById('header-student-info').textContent = `${studentData.name}${classBadge}`;
+
+            beginSession();
+        }
+
+        function beginSession() {
+            initAudio();
+            playPopSound(3);
+
+            questions = generateQuestions();
+            currentIndex = 0;
+            starsEarned = 0;
+            totalScore = 0;
+            firstTryCorrect = 0;
+            document.getElementById('live-score').textContent = '0';
+
+            // Reset tampilan bintang di header
+            const starSlots = document.querySelectorAll('.star-slot');
+            starSlots.forEach(slot => {
+                slot.classList.add('opacity-35', 'grayscale');
+                slot.classList.remove('animate-star-pop');
+            });
+
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('end-screen').classList.add('hidden');
+            document.getElementById('copy-feedback').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+            document.getElementById('game-screen').classList.add('flex');
+
+            renderQuestion();
+        }
+
+        function playAgain() {
+            beginSession();
+        }
+
+        function changeStudent() {
+            playPopSound(2);
+            document.getElementById('end-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('flex');
+            document.getElementById('start-screen').classList.remove('hidden');
+            document.getElementById('student-name').value = '';
+            document.getElementById('student-absen').value = '';
+            document.getElementById('student-name').focus();
+        }
+
+        function renderQuestion() {
+            isQuestionAnswered = false;
+            tapCount = 0;
+            attemptsOnCurrent = 0;
+            const q = questions[currentIndex];
+
+            // Update nomor soal
+            document.getElementById('question-number').textContent = currentIndex + 1;
+
+            // Reset kotak pemandu
+            const guideBox = document.getElementById('guide-box');
+            guideBox.className = "bg-amber-50/95 rounded-2xl shadow-md border-4 border-amber-300 p-3 sm:p-4 flex items-center gap-3 sm:gap-4 transition-all";
+            document.getElementById('guide-avatar').textContent = "🐿️";
+            document.getElementById('guide-message').innerHTML = `Ayo <strong>${studentData.name}</strong>, hitung jumlah ${q.fruit.name} di bawah ini! 😊`;
+
+            // Tampilkan teks cerita
+// ... existing code ... -->
+        // Memeriksa jawaban anak
+        function handleAnswer(selectedNum, btnElement) {
+            if (isQuestionAnswered) return;
+            attemptsOnCurrent++;
+
+            const q = questions[currentIndex];
+            const guideBox = document.getElementById('guide-box');
+            const guideAvatar = document.getElementById('guide-avatar');
+            const guideMessage = document.getElementById('guide-message');
+
+            if (selectedNum === q.answer) {
+                // JAWABAN BENAR!
+                isQuestionAnswered = true;
+                playCorrectSound();
+                launchConfetti(45);
+
+                // Hitung poin soal ini (Maksimal 20 per soal -> 5 soal = 100)
+                let earnedPoints = 20;
+                if (attemptsOnCurrent === 1) {
+                    earnedPoints = 20;
+                    firstTryCorrect++;
+                } else if (attemptsOnCurrent === 2) {
+                    earnedPoints = 10;
+                } else {
+                    earnedPoints = 5;
+                }
+                totalScore += earnedPoints;
+                document.getElementById('live-score').textContent = totalScore;
+
+                // Ubah tampilan tombol benar
+                btnElement.className = "btn-3d bg-emerald-500 border-emerald-700 text-white py-4 rounded-2xl text-3xl sm:text-4xl font-bold shadow-lg ring-4 ring-amber-300 scale-105";
+                btnElement.innerHTML = `${selectedNum} ✅`;
+
+                // Nonaktifkan tombol lain
+                const allBtns = document.querySelectorAll('#options-grid button');
+                allBtns.forEach(b => b.disabled = true);
+
+                // Tambah 1 Bintang di rak atas
+                const starSlots = document.querySelectorAll('.star-slot');
+                if (starSlots[starsEarned]) {
+                    starSlots[starsEarned].classList.remove('opacity-35', 'grayscale');
+                    starSlots[starsEarned].classList.add('animate-star-pop');
+                }
+                starsEarned++;
+
+                // Beri pujian semangat beserta poin yang didapat
+                guideBox.className = "bg-emerald-100 rounded-2xl shadow-md border-4 border-emerald-400 p-3 sm:p-4 flex items-center gap-3 sm:gap-4 transition-all";
+                guideAvatar.textContent = "🥳";
+                const basePraise = PRAISE_MESSAGES[currentIndex % PRAISE_MESSAGES.length];
+                guideMessage.innerHTML = `${basePraise} <strong>(+${earnedPoints} Poin)</strong>`;
+
+                // Tampilkan tombol lanjut
+                const nextBtnContainer = document.getElementById('next-btn-container');
+                const nextBtn = document.getElementById('next-btn');
+                nextBtn.textContent = (currentIndex === 4) ? "Lihat Nilai & Hadiahmu! 🏆" : "Soal Berikutnya ➡️";
+                nextBtnContainer.classList.remove('hidden');
+
+            } else {
+// ... existing code ... -->
+        function showEndScreen() {
+            document.getElementById('game-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('flex');
+            document.getElementById('end-screen').classList.remove('hidden');
+
+            // Isi Biodata & Nilai Akhir di Layar Selesai
+            document.getElementById('result-name').textContent = studentData.name;
+            document.getElementById('result-class').textContent = studentData.studentClass;
+            document.getElementById('result-absen').textContent = studentData.absen;
+            document.getElementById('result-score').textContent = totalScore;
+            document.getElementById('result-detail').textContent = `Langsung benar: ${firstTryCorrect} dari 5 soal • Bintang: 5 ⭐`;
+
+            let predicate = "🌟 Istimewa! Luar Biasa!";
+            if (totalScore < 60) {
+                predicate = "💪 Semangat! Terus Berlatih Ya!";
+            } else if (totalScore < 85) {
+                predicate = "👍 Bagus Sekali! Pintar!";
+            }
+            document.getElementById('result-predicate').textContent = predicate;
+
+            // Catat hasil siswa ke rekap sesi & kirim ke Google Spreadsheet jika terhubung
+            const now = new Date();
+            const timestampStr = now.toLocaleString('id-ID', {
+                dateStyle: 'short',
+                timeStyle: 'medium'
+            });
+
+            lastCompletedRecord = {
+                waktu: timestampStr,
+                nama: studentData.name,
+                kelas: studentData.studentClass,
+                absen: studentData.absen,
+                nilai: totalScore,
+                langsungBenar: `${firstTryCorrect}/5`,
+                bintang: starsEarned
+            };
+            sessionRecords.push(lastCompletedRecord);
+            document.getElementById('session-count-badge').textContent = sessionRecords.length;
+
+            if (sheetWebhookUrl) {
+                sendScoreToSpreadsheet(lastCompletedRecord);
+            } else {
+                const statusBanner = document.getElementById('sheet-status-banner');
+                statusBanner.className = "mb-3 text-sm sm:text-base font-semibold bg-sky-50 text-sky-800 border border-sky-200 rounded-xl px-3.5 py-2.5";
+                statusBanner.innerHTML = `📊 Data siap disimpan! Klik <strong>Unduh Excel/CSV</strong> atau hubungkan Google Sheets di menu Guru.`;
+            }
+
+            playVictorySound();
+            launchConfetti(120);
+        }
+
+        // Mengirim data siswa secara otomatis ke Google Spreadsheet (via Apps Script Web App)
+        async function sendScoreToSpreadsheet(record) {
+            const statusBanner = document.getElementById('sheet-status-banner');
+            statusBanner.className = "mb-3 text-sm sm:text-base font-semibold bg-amber-50 text-amber-800 border border-amber-300 rounded-xl px-3.5 py-2.5";
+            statusBanner.innerHTML = `⏳ Sedang mengirim nilai <strong>${record.nama}</strong> ke Google Spreadsheet...`;
+
+            try {
+                await fetch(sheetWebhookUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: {
+                        'Content-Type': 'text/plain;charset=utf-8'
+                    },
+                    body: JSON.stringify(record)
+                });
+
+                statusBanner.className = "mb-3 text-sm sm:text-base font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl px-3.5 py-2.5";
+                statusBanner.innerHTML = `✅ Nilai <strong>${record.nama}</strong> otomatis tersimpan di Google Spreadsheet!`;
+            } catch (err) {
+                console.warn('Gagal mengirim ke Google Spreadsheet:', err);
+                statusBanner.className = "mb-3 text-sm sm:text-base font-semibold bg-red-100 text-red-700 border border-red-300 rounded-xl px-3.5 py-2.5 flex items-center justify-center gap-2";
+                statusBanner.innerHTML = `⚠️ Gagal terhubung ke Spreadsheet. <button onclick="sendScoreToSpreadsheet(lastCompletedRecord)" class="underline font-bold">Coba Lagi 🔄</button>`;
+            }
+        }
+
+        // Mengunduh file CSV yang dapat langsung dibuka di Excel / Google Sheets
+        function downloadCSV() {
+            const recordsToExport = sessionRecords.length > 0 ? sessionRecords : [];
+            if (recordsToExport.length === 0) {
+                const modalMsg = document.getElementById('sheet-modal-msg');
+                if (modalMsg) {
+                    modalMsg.textContent = "⚠️ Belum ada data siswa yang selesai bermain pada sesi ini.";
+                    modalMsg.classList.remove('hidden');
+                }
+                return;
+            }
+
+            const headers = ["Waktu", "Nama Siswa", "Kelas", "No. Absen", "Nilai Akhir", "Langsung Benar", "Bintang"];
+            const rows = recordsToExport.map(r => [
+                `"${String(r.waktu).replace(/"/g, '""')}"`,
+                `"${String(r.nama).replace(/"/g, '""')}"`,
+                `"${String(r.kelas).replace(/"/g, '""')}"`,
+                `"${String(r.absen).replace(/"/g, '""')}"`,
+                r.nilai,
+                `"${r.langsungBenar}"`,
+                r.bintang
+            ].join(','));
+
+            // Tambahkan BOM UTF-8 agar karakter terbaca rapi di Microsoft Excel
+            const csvContent = "\uFEFF" + [headers.join(','), ...rows].join("\n");
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `Nilai_Kebun_Buah_${new Date().toISOString().slice(0, 10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            playPopSound(4);
+        }
+
+        // Kontrol Modal Pengaturan Spreadsheet Guru
+        function openSheetModal() {
+            playPopSound(2);
+            document.getElementById('sheet-webhook-url').value = sheetWebhookUrl;
+            document.getElementById('session-count-badge').textContent = sessionRecords.length;
+            document.getElementById('sheet-modal-msg').classList.add('hidden');
+            document.getElementById('sheet-modal').classList.remove('hidden');
+        }
+
+        function closeSheetModal() {
+            document.getElementById('sheet-modal').classList.add('hidden');
+        }
+
+        function saveSheetConfig() {
+            const inputUrl = document.getElementById('sheet-webhook-url').value.trim();
+            const msgBox = document.getElementById('sheet-modal-msg');
+            sheetWebhookUrl = inputUrl;
+            updateSheetBadge();
+
+            if (sheetWebhookUrl) {
+                msgBox.textContent = "✅ URL Google Spreadsheet berhasil disimpan untuk sesi ini! Setiap siswa selesai bermain, nilai akan otomatis terkirim.";
+            } else {
+                msgBox.textContent = "ℹ️ URL dikosongkan. Anda tetap bisa mengunduh rekap nilai dalam format Excel/CSV.";
+            }
+            msgBox.classList.remove('hidden');
+            playPopSound(5);
+        }
+
+        // Menyalin link GitHub Pages yang sudah membawa parameter URL Spreadsheet untuk dibagikan ke siswa
+        function copyStudentShareLink() {
+            const inputUrl = document.getElementById('sheet-webhook-url').value.trim() || sheetWebhookUrl;
+            const msgBox = document.getElementById('sheet-modal-msg');
+
+            if (!inputUrl) {
+                msgBox.textContent = "⚠️ Tempel dan simpan URL Web App Google Apps Script terlebih dahulu sebelum menyalin link siswa.";
+                msgBox.classList.remove('hidden');
+                playWrongSound();
+                return;
+            }
+
+            sheetWebhookUrl = inputUrl;
+            updateSheetBadge();
+
+            const baseUrl = window.location.origin + window.location.pathname;
+            const shareableUrl = `${baseUrl}?sheet=${encodeURIComponent(inputUrl)}`;
+
+            const modalContainer = document.getElementById('sheet-modal');
+            const tempArea = document.createElement('textarea');
+            tempArea.value = shareableUrl;
+            tempArea.style.position = 'fixed';
+            tempArea.style.opacity = '0';
+            modalContainer.appendChild(tempArea);
+            tempArea.select();
+
+            try {
+                document.execCommand('copy');
+                msgBox.textContent = "✅ Link khusus siswa berhasil disalin! Bagikan link ini ke grup kelas (WhatsApp/Classroom) agar nilai siswa otomatis masuk ke Spreadsheet Anda.";
+                msgBox.classList.remove('hidden');
+                playPopSound(5);
+            } catch (e) {
+                console.warn('Gagal menyalin link siswa:', e);
+            }
+            modalContainer.removeChild(tempArea);
+        }
+
+        function copyAppsScriptCode() {
+// ... existing code ... -->
